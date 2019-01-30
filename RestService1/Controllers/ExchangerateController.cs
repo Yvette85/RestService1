@@ -8,109 +8,89 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Http;
-using System.Web.Mvc;
+
 
 namespace RestService1.Controllers
 {
-    public class ExchangerateController : Controller
+    // GET: Exchangerate
+    public class ExchangerateController : ApiController
     {
-        // GET: Exchangerate
-        public class ExchangerateController : ApiController
+
+        [AcceptVerbs("POST","GET")]
+
+        [Route("api/exchangerate/myresult")]
+        public string MyResult( string start_at, string end_at, string base1,string target )
+        {
+            var exchangerate = new Exchangerate() // THIS MY ENDPOINT
+            {
+                Start_at = start_at,
+                End_at = end_at,
+                Base1 = base1,
+                Target = target,
+
+            };
+
+            var result = GetExchangerate(exchangerate).Result;
+
+            var json = JsonConvert.SerializeObject(result);
+
+            return json;
+        }
+
+
+       
+        private async Task<Rate> GetExchangerate(Exchangerate exchangerate)
         {
 
 
-           //GET: Exchangerate
+            var client = new HttpClient();
+            var response = await client.GetAsync(new Uri($"https://api.exchangeratesapi.io/history?start_at={exchangerate.Start_at}&end_at={exchangerate.End_at}&base={exchangerate.Base1}&symbols={exchangerate.Target}"));
 
-            //public Exchangerate[] Get()
-            //{
-
-            //    return new Exchangerate[]
-            //     {
-            //           new Exchangerate
-            //           {
-            //               Start_at="2018-02-02"
-
-            //           }
+            var json = response.Content.ReadAsStringAsync();//
+            var content = response.Content.ReadAsAsync<Rate>().Result;// , create a jobject ,change my json in type Exchangerate
 
 
-            //};
-
-
-
-            //}
-
-
-            public string MyResult(string target, string base1, string start_at, string end_at)
+            var rt = new Rate()
             {
-                var exchangerate = new Exchangerate() // THIS MY ENDPOINT
-                {
-                    Target = target,
-                    Start_at = start_at,
-                    End_at = end_at,
-                    Base1 = base1,
+                Max = double.MinValue,
+                Min = double.MaxValue
 
-                };
 
-                var result = GetExchangerate(exchangerate).Result;
+            };
 
-                var json = JsonConvert.SerializeObject(result);
-
-                return json;
-            }
-
-            private async Task<Rate> GetExchangerate(Exchangerate exchangerate)
+            foreach (var rate in content.Rates)
             {
 
-
-                var client = new HttpClient();
-                var response = await client.GetAsync("https://api.exchangeratesapi0+.io/history?start_at=2018-01-01&end_at=2018-03-01&base=USD&symbols=SEK");
-
-                var json = await response.Content.ReadAsStringAsync();//
-                var content = response.Content.ReadAsAsync<Rate>().Result;// , create a jobject ,change my json in type Exchangerate
+                var maxDate = DateTime.MaxValue;
+                var minDate = DateTime.MinValue;
 
 
-                var rt = new Rate()
+                if (rate.Value.Value<JObject>().Value<double>() > rt.Max) //Dynamic type, Jobject : is dictionnary that contains any value not in the begining
+
                 {
-                    Max = double.MinValue,
-                    Min = double.MaxValue
+                    rt.Max = rate.Value.Value<double>();
+                    maxDate = DateTime.Parse(rate.Key);
 
-
-                };
-
-                foreach (var rate in content.Rates)
-                {
-
-                    var maxDate = DateTime.MaxValue;
-                    var minDate = DateTime.MinValue;
-
-
-                    if (rate.Value.Value<JObject>().Value<double>() > rt.Max) //Dynamic type, Jobject : is dictionnary that contains any value not in the begining
-
-                    {
-                        rt.Max = rate.Value.Value<double>();
-                        maxDate = DateTime.Parse(rate.Key);
-
-                    }
-
-                    if (rate.Value.Value<JObject>().Value<double>() < rt.Min)
-                    {
-                        rt.Min = rate.Value.Value<double>();
-                        minDate = DateTime.Parse(rate.Key);
-
-                    }
-
-                    rt.AllRates += rate.Value.Value<double>();
-                    {
-                        var i = rt.AllRates / content.Rates.Count;
-                    }
                 }
 
-                return rt;
+                if (rate.Value.Value<JObject>().Value<double>() < rt.Min)
+                {
+                    rt.Min = rate.Value.Value<double>();
+                    minDate = DateTime.Parse(rate.Key);
 
+                }
+
+                rt.AllRates += rate.Value.Value<double>();
+                {
+                    var i = rt.AllRates / content.Rates.Count;
+                }
             }
 
+            return rt;
 
         }
 
+
     }
+
 }
