@@ -18,10 +18,10 @@ namespace RestService1.Controllers
 
         [AcceptVerbs("POST","GET")]
 
-        [Route("api/exchangerate/myresult")]
-        public string MyResult( string start_at, string end_at, string base1,string target )
+        [Route("api/exchangerate/myresult")]  //Endpoint that take 4 parameters
+        public async Task<string> MyResultAsync( string start_at, string end_at, string base1,string target )
         {
-            var exchangerate = new Exchangerate() // THIS MY ENDPOINT
+            var exchangerate = new Exchangerate() 
             {
                 Start_at = start_at,
                 End_at = end_at,
@@ -30,7 +30,7 @@ namespace RestService1.Controllers
 
             };
 
-            var result = GetExchangerate(exchangerate).Result;
+            var result =   await GetExchangerate(exchangerate);
 
             var json = JsonConvert.SerializeObject(result);
 
@@ -47,7 +47,7 @@ namespace RestService1.Controllers
             var response = await client.GetAsync(new Uri($"https://api.exchangeratesapi.io/history?start_at={exchangerate.Start_at}&end_at={exchangerate.End_at}&base={exchangerate.Base1}&symbols={exchangerate.Target}"));
 
             var json = response.Content.ReadAsStringAsync();//
-            var content = response.Content.ReadAsAsync<Rate>().Result;// , create a jobject ,change my json in type Exchangerate
+            var content = await response.Content.ReadAsAsync<Rate>();
 
 
             var rt = new Rate()
@@ -65,22 +65,22 @@ namespace RestService1.Controllers
                 var minDate = DateTime.MinValue;
 
 
-                if (rate.Value.Value<JObject>().Value<double>() > rt.Max) //Dynamic type, Jobject : is dictionnary that contains any value not in the begining
-
+          
+                if (rate.Value.First.First.Value<double>() > rt.Max)
                 {
-                    rt.Max = rate.Value.Value<double>();
+                    rt.Max = rate.Value.First.First.Value<double>();
                     maxDate = DateTime.Parse(rate.Key);
 
                 }
 
-                if (rate.Value.Value<JObject>().Value<double>() < rt.Min)
+                if (rate.Value.First.First.Value<double>() < rt.Min)
                 {
-                    rt.Min = rate.Value.Value<double>();
+                    rt.Min = rate.Value.First.First.Value<double>();
                     minDate = DateTime.Parse(rate.Key);
 
                 }
 
-                rt.AllRates += rate.Value.Value<double>();
+                rt.AllRates += rate.Value.First.First.Value<double>();
                 {
                     var i = rt.AllRates / content.Rates.Count;
                 }
